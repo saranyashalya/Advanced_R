@@ -1,0 +1,416 @@
+---
+title: "Advanced_R_markdown"
+author: "Saranya"
+date: "November 10, 2018"
+output: html_document
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(purrr)
+```
+**map_chr(returns character), map_lgl(returns logical), map_dbl(returns number)**
+**first arugument as vector and second arguement as function to be applied on each vector or list elements.**
+```{r}
+map_chr(c(5,3,1,4,2), function(x){
+  c("one","two","three","four","five")[x]
+})
+
+map_lgl(c(1,2,3,4,5), function(x){
+  x>3
+})
+
+map_dbl(c(5,10,25), function(x){
+  sqrt(x)
+})
+```
+
+**map_if() function takes 3 arguments.**
+**1 - a list or vector containing data,**
+**2 - a predicate function (only when vector element satisfies this condition, 3rd function will be applied.)**
+**3 - a function to be applied.**
+**map_if() always returns a list..**
+
+```{r}
+map_if(c(1:5), function(x){
+  x %% 2 ==0
+}, function(y){
+  y^2
+}) %>% unlist()
+```
+
+**map_at() function takes 3 arguments**
+**1. list or vector**
+**2. index locations at which the function should be applied**
+**3. function to be applied.**
+```{r}
+map_at(seq(100,500,100), c(1,5), function(x){
+  x-50
+}) %>% unlist()
+```
+
+**map2_chr() takes 2 vectors as input of equal length and third will be function that should be applied on both**
+```{r}
+map2_chr(letters, 1:26, paste0) 
+
+map2_chr(c(1:5),c(6:10),sum)
+
+map2_dbl(c(1:5),c(11:15),sum)
+```
+**pmap is similar to map2 but we can have more number of list input elements. #list args should be list of list.**
+```{r}
+pmap_chr(list(list(1,2,3),list(10,11,12),list('a','b','c')),paste)
+```
+**reduce() takes first element of vector and implements the function with second value and result will enter the function with 3rd value and so on.**
+**the function should take atleast 2 args and returns a vector or list**
+```{r}
+reduce(c(1:5), function(x,y){
+  #message("X is ",x)
+  #message("Y is ",y)
+  x+y
+})
+
+reduce_right(c(1:5), function(x,y){
+  message("X is ",x)
+  message("Y is ",y)
+  x+y
+})
+```
+**contains() searches for specific element inside a vector -> this is not working**
+**has_element() also searches for specific element -> this works**
+```{r}
+#contains(letters,"a")
+#contains(letters, "A")
+
+has_element(c(1,2,3,4,5),5)
+```
+**detect returns the vector element which first satifies the predicate function**
+
+```{r}
+detect(10:20, function(x){
+  x>18
+})
+```
+
+**detect_index returns the vector index which first satifies the predicate function.**
+```{r}
+detect_index(10:20, function(x){
+  x>18
+})
+
+detect_index(10:20, function(x){
+  x>18
+})
+```
+
+**Filter function**
+**keep(), discard(), every(), some()**
+
+**returns only the elements which satisfied predicate function**
+
+```{r}
+keep(c(1:10), function(x){
+  x %% 5 ==0
+})
+```
+**returns only the elements which doesn't satify the predicate function**
+
+```{r}
+discard(c(1:10), function(x){
+  x %%5 ==0
+})
+```
+
+**returns true only when all elements satifies the condition**
+```{r}
+every(c(1:10),function(x){
+  x %% 1 ==0
+})
+
+every(c(1:10),function(x){
+  x %% 2 ==0
+})
+```
+**returns true if some elements satisfies the condition.**
+```{r}
+some(c(1:10),function(x){
+  x %% 2 ==0
+})
+```
+
+**compose() used to combine any number of functions into one function*
+```{r}
+n_unique <- compose(length, unique)
+
+rep(1:5,1:5)
+
+n_unique(rep(1:5,1:5))
+```
+**partial() -> you can specify some of the arguments of a function, and then partial() will return a function that only takes the unspecified arguments.**
+```{r}
+mult_three_numbers <- function(x,y,z){
+  x*y*z
+}
+
+mult_by_15 <- partial(mult_three_numbers, x=3, y=5)
+
+mult_by_15(z=4)
+```
+**walk()**
+```{r}
+walk(c("hi","hello","how are you"),message)
+```
+
+**Recursive functions**
+**fibonnaci series**
+```{r}
+fib <- function(n){
+  stopifnot(n>0)
+  if(n==1){
+    0
+  } else if(n==2){
+    1
+  } else{
+    fib(n-1)+fib(n-2)
+  }
+}
+
+
+
+fib(1)
+fib(2)
+fib(3)
+fib(4)
+fib(5)
+
+map_dbl(1:10,fib)
+```
+**optimizing fibonnaci series**
+```{r}
+fib_tbl <- c(0,1,rep(NA,23))
+
+fib_mem <- function(n){
+  stopifnot(n>0)
+  if(!is.na(fib_tbl[n])){
+    fib_tbl[n]
+  } else {
+    fib_tbl[n-1] <<- fib_mem(n-1)
+    fib_tbl[n-2] <<- fib_mem(n-2)
+    fib_tbl[n-1] + fib_tbl[n-2]
+  }
+}
+
+map_dbl(1:10,fib_mem)
+```
+
+**comparing fib() and fib_mem() functions**
+```{r}
+library(purrr)
+library(microbenchmark)
+library(tidyr)
+library(magrittr)
+library(dplyr)
+
+fib_data <- map(1:10,function(x){ microbenchmark(fib(x), times =100)$time })
+names(fib_data) <- paste0(letters[1:10],1:10)
+fib_data <- as.data.frame(fib_data)
+
+fib_data %<>%
+  gather(num, time) %>%
+  group_by(num) %>%
+  summarise(med_time = median(time))
+
+
+memo_data <- map(1:10, function(x){ microbenchmark(fib_mem(x),times = 100)$time})
+names(memo_data) <- paste0(letters[1:10],1:10)
+memo_data <- as.data.frame(memo_data)
+
+
+memo_data %<>% gather(num, time) %>% group_by(num) %>% summarize(med_val = median(time))
+
+
+plot(1:10, fib_data$med_time, xlab ="Fibonacci number", ylab ="Median time", pch =18, bty="n", xaxt = "n", yaxt ="n")
+axis(1, at = 1:10)
+axis(2, at = seq(0,3500000, by=50000))
+points(1:10+0.1, memo_data$med_val, col ="blue", pch =18)
+legend(1, 600000, c("Non Memorized","Memorized"), pch = 15, col=c("black","blue"),bty="n", cex=1, y.intersp = 1.5)
+```
+
+**expressions**
+**expressions should be mentioned inside quote()**
+
+```{r}
+two_plus_two <- quote(2+2)
+```
+**expressions can be executed using eval**
+```{r}
+eval(two_plus_two)
+```
+**parse() to transform string into expression**
+```{r}
+tpt_string <- "2+2"
+tpt_expression <- parse(text = tpt_string)
+eval(tpt_expression)
+```
+**reverse of parse, transforms expression to string**
+```{r}
+deparse(two_plus_two)
+```
+**we can modify the contents of expression before evaluation**
+```{r}
+sum_expr <- quote(sum(10,50))
+sum_expr[1]
+sum_expr[2]
+sum_expr[3]
+
+eval(sum_expr)
+
+sum_expr[[1]] <- quote(paste0)
+sum_expr[[2]] <- 10
+sum_expr[[3]] <- 50
+eval(sum_expr)
+```
+**we can compose expressions using call()**
+```{r}
+new_expr <- call("paste0",1,2)
+eval(new_expr)
+new_expr
+```
+**match.call() - You can capture the the expression an R user typed into the R console**
+**when they executed a function by including match.call() in the function the user executed**
+```{r}
+return_expr <-  function(...){
+  match.call()
+}
+
+return_expr(2,col="blue",FALSE) # here while calling the function, whatever parameters are used this will be converted as expression
+return_expr(2,col="blue",FALSE)
+```
+**match.call() is used to capture the expression that the user enters. first argument of the expr is evaluated for if it is numeric**
+```{r}
+first_arg <- function(...){
+  expr <- match.call()
+  first_arg_expr <- expr[[2]] # expr[1] corresponds to function name, in this case first_arg
+  first_arg <- eval(first_arg_expr)
+  if(is.numeric(first_arg)){
+    paste("The first argument is", first_arg)
+  } else {
+    "The first argument is not numeric."
+  }
+}
+
+first_arg(2,4)
+first_arg("sara",5)
+```
+
+**creating new environment**
+**assign() is used to store values into new environment**
+**get() is used to retrieve value from new environment, assign() and get() are opposite**
+**we can assign values to environment like handling list**
+```{r}
+my_personal_env <- new.env()
+my_personal_env$a <- 100
+get("a", envir =  my_personal_env)
+
+assign("b", 200, envir = my_personal_env)
+get("b",envir = my_personal_env)
+```
+**ls() to list variables of environment**
+**exists() to check if a variable is present in environment**
+**rm() to remove a variable in environment**
+```{r}
+ls(envir = my_personal_env)
+exists("a",envir = my_personal_env)
+rm("b", envir = my_personal_env)
+exists("b", envir = my_personal_env)
+```
+
+**environments are organized in parent/child relationship, such that each environment keeps track of its parent but parents are unaware of their children**
+**search() result indicates, globalenv is child of bindrcpp and bindrcpp is child of dplyr etc**
+```{r}
+search()
+
+library(ggplot2)
+search()
+```
+**after loading ggplot2, this has become parent of globalenv.
+
+**global assignment operator**
+```{r}
+a <- 10
+
+my_fun <- function(){
+  a<-5
+  return(a)
+}
+my_fun() # returns 5 as the value is from execution environment
+a # a value is still 10
+
+my_fun_2 <- function(){
+  a <<- 5
+}
+
+my_fun_2()
+a
+
+#b # no object found
+#exists(b)
+
+assign2 <- function(){
+  b <<- 25
+}
+assign2()
+#b # returns 25
+```
+**Error handling**
+
+**stop() to generate an error and stops the execution**
+```{r}
+#stop("This is an error")
+```
+**stopifnot evaluates series of expression and halts the execution if any of the expression is false**
+
+```{r}
+error_function <- function(x){
+  stopifnot(x>0)
+  print(x)
+}
+
+#error_function(-1)
+error_function(5)
+```
+**warning() - similar to stop() displays message but doesn't halt the execution**
+```{r}
+warning("This is a warning!")
+```
+**messages() -> justs prints the text on screen**
+```{r}
+message("hello!")
+```
+
+**tryCatch() block **
+**1st arg - expression to evaluate**
+**2nd and 3rd args -> error and warning functions**
+**finally block which executes by default**
+```{r}
+my_tryCatch <- function(expr){
+  tryCatch(expr, 
+           error = function(e){
+             message("Error occured, ",e)
+           }, 
+           warning = function(w){
+             message("Warning occured, ",w)
+           },
+           finally = {
+             message("Finally done!")
+           }) 
+}
+my_tryCatch(sum(10,5))
+
+my_tryCatch(sum(5,"sara"))
+my_tryCatch(as.numeric(c(5,"sara")))
+
+```
